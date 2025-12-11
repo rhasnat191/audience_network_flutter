@@ -67,10 +67,10 @@ final class FacebookAudienceNetworkNativeBannerAdView: NSObject, FlutterPlatform
         self.params = params
         self.registrar = registrar
 
-        self.channel = FlutterMethodChannel(
-            name: "\(FANConstant.NATIVE_BANNER_AD_CHANNEL)_\(viewId)",
-            binaryMessenger: registrar.messenger()
-        )
+        // self.channel = FlutterMethodChannel(
+        //     name: "\(FANConstant.NATIVE_BANNER_AD_CHANNEL)_\(viewId)",
+        //     binaryMessenger: registrar.messenger()
+        // )
 
         super.init()
 
