@@ -2,7 +2,6 @@ import Foundation
 import Flutter
 import FBAudienceNetwork
 
-@MainActor
 class FANPluginFactory: NSObject {
     let channel: FlutterMethodChannel
     
@@ -43,7 +42,9 @@ class FANPluginFactory: NSObject {
                     result(results.isSuccess)
                 }
             default:
-                result(FlutterMethodNotImplemented)
+                DispatchQueue.main.async {
+                    result(FlutterMethodNotImplemented)
+                }
             }
         }
         

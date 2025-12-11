@@ -2,7 +2,7 @@ import Foundation
 import Flutter
 import FBAudienceNetwork
 
-@MainActor
+
 class FacebookAudienceNetworkNativeAdFactory: NSObject, FlutterPlatformViewFactory {
     let registrar: FlutterPluginRegistrar
     init(_registrar: FlutterPluginRegistrar) {
@@ -41,7 +41,7 @@ class FacebookAudienceNetworkNativeAdLayout {
     var adBodyLabelRect: CGRect!
 }
 
-@MainActor
+
 class FacebookAudienceNetworkNativeAdView: NSObject, FlutterPlatformView, FBNativeAdDelegate {
     private let frame: CGRect
     private let viewId: Int64
@@ -114,7 +114,9 @@ class FacebookAudienceNetworkNativeAdView: NSObject, FlutterPlatformView, FBNati
         case "init":
             result(true)
         default:
-            result(FlutterMethodNotImplemented)
+            DispatchQueue.main.async {
+                result(FlutterMethodNotImplemented)
+            }
         }
     }
 
