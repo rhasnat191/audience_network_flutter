@@ -44,7 +44,7 @@ final class FacebookAudienceNetworkBannerAdView: NSObject,
     private let viewId: Int64
     private let registrar: FlutterPluginRegistrar
     private let params: [String: Any]
-    private let channel: FlutterMethodChannel
+    @MainActor private let channel: FlutterMethodChannel
     private lazy var mainView: UIView = {
         UIView()
     }()
@@ -64,19 +64,13 @@ final class FacebookAudienceNetworkBannerAdView: NSObject,
 
         super.init()
         
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            
-            let ch = FlutterMethodChannel(
-                name: "\(FANConstant.BANNER_AD_CHANNEL)_\(viewId)",
-                binaryMessenger: registrar.messenger()
-            )
-            
-            self.channel = ch
-            
-            ch.setMethodCallHandler { [weak self] call, result in
-                self?.handle(call, result: result)
-            }
+        self.channel = FlutterMethodChannel(
+            name: "\(FANConstant.BANNER_AD_CHANNEL)_\(viewId)",
+            binaryMessenger: registrar.messenger()
+        )
+        
+        channel.setMethodCallHandler { [weak self] call, result in
+            self?.handle(call, result: result)
         }
 
 
