@@ -57,12 +57,7 @@ final class FacebookAudienceNetworkNativeAdView: NSObject,
     private let viewId: Int64
     private let registrar: FlutterPluginRegistrar
     private let params: [String: Any]
-    private lazy var channel: FlutterMethodChannel = {
-        FlutterMethodChannel(
-                name: "\(FANConstant.NATIVE_AD_CHANNEL)_\(viewId)",
-                binaryMessenger: registrar.messenger()
-        )
-    }()
+    private let channel: FlutterMethodChannel
     private lazy var mainView: UIView = {
         UIView()
     }()
@@ -99,15 +94,20 @@ final class FacebookAudienceNetworkNativeAdView: NSObject,
         self.params = params
         self.registrar = registrar
 
-        // self.channel = FlutterMethodChannel(
-        //     name: "\(FANConstant.NATIVE_AD_CHANNEL)_\(viewId)",
-        //     binaryMessenger: registrar.messenger()
-        // )
+        
 
         super.init()
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
 
-        channel.setMethodCallHandler { [weak self] call, result in
-            self?.handle(call, result: result)
+            self.channel = FlutterMethodChannel(
+                name: "\(FANConstant.NATIVE_AD_CHANNEL)_\(viewId)",
+                binaryMessenger: registrar.messenger()
+            )
+
+            self.channel.setMethodCallHandler { [weak self] call, result in
+                self?.handle(call, result: result)
+            }
         }
 
         setupView()
