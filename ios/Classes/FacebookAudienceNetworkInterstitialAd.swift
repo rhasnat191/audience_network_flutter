@@ -9,7 +9,6 @@ final class FacebookAudienceNetworkInterstitialAdPlugin: NSObject, FBInterstitia
     private var adsById: [Int: FBInterstitialAd] = [:]
     private var idsByAd: [FBInterstitialAd: Int] = [:]
 
-    @MainActor
     init(_channel: FlutterMethodChannel) {
         print("InterstitialPlugin > init")
 

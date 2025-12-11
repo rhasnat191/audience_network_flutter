@@ -2,7 +2,6 @@ import Foundation
 import Flutter
 import FBAudienceNetwork
 
-@MainActor
 final class FANPluginFactory: NSObject {
 
     private let channel: FlutterMethodChannel
@@ -22,7 +21,6 @@ final class FANPluginFactory: NSObject {
     }
 }
 
-@MainActor
 private extension FANPluginFactory {
 
     func handle(call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -32,9 +30,10 @@ private extension FANPluginFactory {
             handleInitialization(call, result: result)
 
         default:
-            Task { @MainActor in
-               result(FlutterMethodNotImplemented)
-            }
+            result(FlutterMethodNotImplemented)
+            // Task { @MainActor in
+               
+            // }
         }
     }
 }

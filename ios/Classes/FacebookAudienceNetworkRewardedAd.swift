@@ -9,7 +9,6 @@ final class FacebookAudienceNetworkRewardedAdPlugin: NSObject, FBRewardedVideoAd
     private var adsById: [Int: FBRewardedVideoAd] = [:]
     private var idsByAd: [FBRewardedVideoAd: Int] = [:]
 
-    @MainActor
     init(_channel: FlutterMethodChannel) {
         print("RewardedAdPlugin > init")
 
@@ -41,9 +40,7 @@ private extension FacebookAudienceNetworkRewardedAdPlugin {
             result(destroyAd(call))
 
         default:
-            DispatchQueue.main.async {
-                result(FlutterMethodNotImplemented)
-            }
+            result(FlutterMethodNotImplemented)
         }
     }
 }
