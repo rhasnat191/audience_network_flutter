@@ -35,6 +35,7 @@ final class FacebookAudienceNetworkNativeBannerAdFactory: NSObject, FlutterPlatf
 }
 
 // MARK: - Native Banner Ad View
+@MainActor
 final class FacebookAudienceNetworkNativeBannerAdView: NSObject, FlutterPlatformView, FBNativeBannerAdDelegate {
 
     private let frame: CGRect
@@ -42,15 +43,11 @@ final class FacebookAudienceNetworkNativeBannerAdView: NSObject, FlutterPlatform
     private let registrar: FlutterPluginRegistrar
     private let params: [String: Any]
     private let channel: FlutterMethodChannel
-    @MainActor
-    private lazy var mainView: UIView = {
-        UIView()
-    }()
+    private lazy var mainView: UIView = UIView()
     private var nativeBannerAd: FBNativeBannerAd?
-
     private var nativeAdViewAttributes: FBNativeAdViewAttributes?
 
-    init(frame: CGRect,
+    nonisolated init(frame: CGRect,
          viewId: Int64,
          params: [String: Any],
          registrar: FlutterPluginRegistrar) {
@@ -61,23 +58,27 @@ final class FacebookAudienceNetworkNativeBannerAdView: NSObject, FlutterPlatform
         self.viewId = viewId
         self.params = params
         self.registrar = registrar
-
-        
-
-        super.init()
         self.channel = FlutterMethodChannel(
             name: "\(FANConstant.NATIVE_BANNER_AD_CHANNEL)_\(viewId)",
             binaryMessenger: registrar.messenger()
         )
         
-        channel.setMethodCallHandler { [weak self] call, result in
-            self?.handle(call, result: result)
+        super.init()
+        
+        Task { @MainActor in
+            self.channel.setMethodCallHandler { [weak self] call, result in
+                self?.handle(call, result: result)
+            }
+            self.setupView()
+            self.loadNativeAd()
         }
-        setupView()
-        loadNativeAd()
     }
 
-    func view() -> UIView { mainView }
+    nonisolated func view() -> UIView {
+        MainActor.assumeIsolated {
+            mainView
+        }
+    }
 
     deinit {
         print("NativeBannerAd > deinit")
@@ -126,7 +127,6 @@ private extension FacebookAudienceNetworkNativeBannerAdView {
     }
 
     func initNativeAdViewAttributes() {
-        // Optional: implement customization if needed (current code was commented out)
         nativeAdViewAttributes = FBNativeAdViewAttributes()
     }
 }
@@ -167,55 +167,67 @@ private extension FacebookAudienceNetworkNativeBannerAdView {
 // MARK: - Delegate Handlers
 extension FacebookAudienceNetworkNativeBannerAdView {
 
-    func nativeBannerAdDidLoad(_ nativeBannerAd: FBNativeBannerAd) {
-        print("NativeBannerAd > Loaded")
+    nonisolated func nativeBannerAdDidLoad(_ nativeBannerAd: FBNativeBannerAd) {
+        Task { @MainActor in
+            print("NativeBannerAd > Loaded")
 
-        self.nativeBannerAd = nativeBannerAd
-        initNativeAdViewAttributes()
-        registerTemplateView()
+            self.nativeBannerAd = nativeBannerAd
+            self.initNativeAdViewAttributes()
+            self.registerTemplateView()
 
-        channel?.invokeMethod(FANConstant.LOADED_METHOD, arguments: [
-            FANConstant.PLACEMENT_ID_ARG: nativeBannerAd.placementID,
-            FANConstant.INVALIDATED_ARG: nativeBannerAd.isAdValid
-        ])
+            channel.invokeMethod(FANConstant.LOADED_METHOD, arguments: [
+                FANConstant.PLACEMENT_ID_ARG: nativeBannerAd.placementID,
+                FANConstant.INVALIDATED_ARG: nativeBannerAd.isAdValid
+            ])
+        }
     }
 
-    func nativeBannerAdDidDownloadMedia(_ nativeBannerAd: FBNativeBannerAd) {
-        print("NativeBannerAd > DidDownloadMedia")
+    nonisolated func nativeBannerAdDidDownloadMedia(_ nativeBannerAd: FBNativeBannerAd) {
+        Task { @MainActor in
+            print("NativeBannerAd > DidDownloadMedia")
+        }
     }
 
-    func nativeBannerAdWillLogImpression(_ nativeBannerAd: FBNativeBannerAd) {
-        print("NativeBannerAd > WillLogImpression")
+    nonisolated func nativeBannerAdWillLogImpression(_ nativeBannerAd: FBNativeBannerAd) {
+        Task { @MainActor in
+            print("NativeBannerAd > WillLogImpression")
 
-        channel?.invokeMethod(FANConstant.LOGGING_IMPRESSION_METHOD, arguments: [
-            FANConstant.PLACEMENT_ID_ARG: nativeBannerAd.placementID,
-            FANConstant.INVALIDATED_ARG: nativeBannerAd.isAdValid
-        ])
+            channel.invokeMethod(FANConstant.LOGGING_IMPRESSION_METHOD, arguments: [
+                FANConstant.PLACEMENT_ID_ARG: nativeBannerAd.placementID,
+                FANConstant.INVALIDATED_ARG: nativeBannerAd.isAdValid
+            ])
+        }
     }
 
-    func nativeBannerAd(_ nativeBannerAd: FBNativeBannerAd, didFailWithError error: Error) {
-        print("NativeBannerAd > Failed: \(error.localizedDescription)")
+    nonisolated func nativeBannerAd(_ nativeBannerAd: FBNativeBannerAd, didFailWithError error: Error) {
+        Task { @MainActor in
+            print("NativeBannerAd > Failed: \(error.localizedDescription)")
 
-        let details = FacebookAdErrorDetails(fromSDKError: error)
+            let details = FacebookAdErrorDetails(fromSDKError: error)
 
-        channel?.invokeMethod(FANConstant.ERROR_METHOD, arguments: [
-            FANConstant.PLACEMENT_ID_ARG: nativeBannerAd.placementID,
-            FANConstant.INVALIDATED_ARG: nativeBannerAd.isAdValid,
-            FANConstant.ERROR_CODE_ARG: details?.code as Any,
-            FANConstant.ERROR_MESSAGE_ARG: details?.message as Any
-        ])
+            channel.invokeMethod(FANConstant.ERROR_METHOD, arguments: [
+                FANConstant.PLACEMENT_ID_ARG: nativeBannerAd.placementID,
+                FANConstant.INVALIDATED_ARG: nativeBannerAd.isAdValid,
+                FANConstant.ERROR_CODE_ARG: details?.code as Any,
+                FANConstant.ERROR_MESSAGE_ARG: details?.message as Any
+            ])
+        }
     }
 
-    func nativeBannerAdDidClick(_ nativeBannerAd: FBNativeBannerAd) {
-        print("NativeBannerAd > Clicked")
+    nonisolated func nativeBannerAdDidClick(_ nativeBannerAd: FBNativeBannerAd) {
+        Task { @MainActor in
+            print("NativeBannerAd > Clicked")
 
-        channel?.invokeMethod(FANConstant.CLICKED_METHOD, arguments: [
-            FANConstant.PLACEMENT_ID_ARG: nativeBannerAd.placementID,
-            FANConstant.INVALIDATED_ARG: nativeBannerAd.isAdValid
-        ])
+            channel.invokeMethod(FANConstant.CLICKED_METHOD, arguments: [
+                FANConstant.PLACEMENT_ID_ARG: nativeBannerAd.placementID,
+                FANConstant.INVALIDATED_ARG: nativeBannerAd.isAdValid
+            ])
+        }
     }
 
-    func nativeBannerAdDidFinishHandlingClick(_ nativeBannerAd: FBNativeBannerAd) {
-        print("NativeBannerAd > FinishedHandlingClick")
+    nonisolated func nativeBannerAdDidFinishHandlingClick(_ nativeBannerAd: FBNativeBannerAd) {
+        Task { @MainActor in
+            print("NativeBannerAd > FinishedHandlingClick")
+        }
     }
 }

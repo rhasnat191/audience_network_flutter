@@ -34,7 +34,6 @@ final class FacebookAudienceNetworkNativeAdFactory: NSObject, FlutterPlatformVie
     }
 }
 
-
 // MARK: - Layout Holder
 final class FacebookAudienceNetworkNativeAdLayout {
     var adView = CGRect.zero
@@ -48,20 +47,16 @@ final class FacebookAudienceNetworkNativeAdLayout {
     var adBodyLabelRect = CGRect.zero
 }
 
-
-final class FacebookAudienceNetworkNativeAdView: NSObject,
-                                                 FlutterPlatformView,
-                                                 FBNativeAdDelegate {
+// MARK: - Native Ad View
+@MainActor
+final class FacebookAudienceNetworkNativeAdView: NSObject, FlutterPlatformView, FBNativeAdDelegate {
 
     private let frame: CGRect
     private let viewId: Int64
     private let registrar: FlutterPluginRegistrar
     private let params: [String: Any]
     private let channel: FlutterMethodChannel
-    @MainActor
-    private lazy var mainView: UIView = {
-        UIView()
-    }()
+    private lazy var mainView: UIView = UIView()
     private var nativeAd: FBNativeAd?
 
     // Layout
@@ -83,7 +78,7 @@ final class FacebookAudienceNetworkNativeAdView: NSObject,
     private var sponsoredFont = UIFont.systemFont(ofSize: 10)
     private var descriptionLabelLines = 2
 
-    init(frame: CGRect,
+    nonisolated init(frame: CGRect,
          viewId: Int64,
          params: [String: Any],
          registrar: FlutterPluginRegistrar) {
@@ -94,28 +89,31 @@ final class FacebookAudienceNetworkNativeAdView: NSObject,
         self.viewId = viewId
         self.params = params
         self.registrar = registrar
-
-        
-
-        super.init()
         self.channel = FlutterMethodChannel(
             name: "\(FANConstant.NATIVE_AD_CHANNEL)_\(viewId)",
             binaryMessenger: registrar.messenger()
         )
-        
-        channel.setMethodCallHandler { [weak self] call, result in
-            self?.handle(call, result: result)
-        }
 
-        setupView()
-        loadNativeAd()
+        super.init()
+        
+        Task { @MainActor in
+            self.channel.setMethodCallHandler { [weak self] call, result in
+                self?.handle(call, result: result)
+            }
+            
+            self.setupView()
+            self.loadNativeAd()
+        }
     }
 
-    func view() -> UIView { mainView }
+    nonisolated func view() -> UIView {
+        MainActor.assumeIsolated {
+            mainView
+        }
+    }
 
     deinit { print("NativeAd > deinit") }
 }
-
 
 // MARK: - Flutter Method Handler
 private extension FacebookAudienceNetworkNativeAdView {
@@ -130,9 +128,7 @@ private extension FacebookAudienceNetworkNativeAdView {
     }
 }
 
-
 // MARK: - Setup Base View
-
 private extension FacebookAudienceNetworkNativeAdView {
 
     func setupView() {
@@ -142,9 +138,7 @@ private extension FacebookAudienceNetworkNativeAdView {
     }
 }
 
-
 // MARK: - Load FAN Ad
-
 private extension FacebookAudienceNetworkNativeAdView {
 
     func loadNativeAd() {
@@ -162,9 +156,7 @@ private extension FacebookAudienceNetworkNativeAdView {
     }
 }
 
-
 // MARK: - Common Attribute Setup
-
 private extension FacebookAudienceNetworkNativeAdView {
 
     func buildNativeAdViewAttributes() {
@@ -190,28 +182,26 @@ private extension FacebookAudienceNetworkNativeAdView {
     }
 }
 
-
 // MARK: - Native Ad Did Load
-
 extension FacebookAudienceNetworkNativeAdView {
 
-    func nativeAdDidLoad(_ nativeAd: FBNativeAd) {
-        print("NativeAd > nativeAdDidLoad")
-        self.nativeAd = nativeAd
+    nonisolated func nativeAdDidLoad(_ nativeAd: FBNativeAd) {
+        Task { @MainActor in
+            print("NativeAd > nativeAdDidLoad")
+            self.nativeAd = nativeAd
 
-        registerAdLayout()
+            self.registerAdLayout()
 
-        let arg: [String: Any] = [
-            FANConstant.PLACEMENT_ID_ARG: nativeAd.placementID,
-            FANConstant.INVALIDATED_ARG: nativeAd.isAdValid
-        ]
-        channel?.invokeMethod(FANConstant.LOADED_METHOD, arguments: arg)
+            let arg: [String: Any] = [
+                FANConstant.PLACEMENT_ID_ARG: nativeAd.placementID,
+                FANConstant.INVALIDATED_ARG: nativeAd.isAdValid
+            ]
+            channel.invokeMethod(FANConstant.LOADED_METHOD, arguments: arg)
+        }
     }
 }
 
-
-// MARK: - Choose Layout (Template / Horizontal / Vertical)
-
+// MARK: - Choose Layout
 private extension FacebookAudienceNetworkNativeAdView {
 
     func registerAdLayout() {
@@ -234,9 +224,7 @@ private extension FacebookAudienceNetworkNativeAdView {
     }
 }
 
-
 // MARK: - TEMPLATE LAYOUT
-
 private extension FacebookAudienceNetworkNativeAdView {
 
     func buildTemplateView() {
@@ -257,8 +245,11 @@ private extension FacebookAudienceNetworkNativeAdView {
     }
 }
 
+// Note: Horizontal and Vertical layout methods continue in next part
+// (keeping within reasonable length for artifact)
 
 // MARK: - HORIZONTAL LAYOUT + VIEW
+// Add these extensions to FacebookAudienceNetworkNativeAdView
 
 private extension FacebookAudienceNetworkNativeAdView {
 
@@ -280,14 +271,8 @@ private extension FacebookAudienceNetworkNativeAdView {
         nativeAdLayout.adOptionsRect = CGRect(x: width - 40, y: 10, width: 40, height: 20)
         nativeAdLayout.adMediaRect = CGRect(x: 0, y: 50, width: width, height: height - 120)
         nativeAdLayout.adCoverRect = nativeAdLayout.adMediaRect
-        nativeAdLayout.adCallToActionRect = CGRect(x: width - ctaSize.width - 5,
-                                                   y: 10,
-                                                   width: ctaSize.width,
-                                                   height: ctaSize.height)
-        nativeAdLayout.adBodyLabelRect = CGRect(x: 5,
-                                                y: height - 60,
-                                                width: width - 10,
-                                                height: 50)
+        nativeAdLayout.adCallToActionRect = CGRect(x: width - ctaSize.width - 5, y: 10, width: ctaSize.width, height: ctaSize.height)
+        nativeAdLayout.adBodyLabelRect = CGRect(x: 5, y: height - 60, width: width - 10, height: 50)
     }
 
     func buildHorizontalView() {
@@ -370,9 +355,7 @@ private extension FacebookAudienceNetworkNativeAdView {
     }
 }
 
-
 // MARK: - VERTICAL LAYOUT + VIEW
-
 private extension FacebookAudienceNetworkNativeAdView {
 
     func buildVerticalLayout() {
@@ -470,38 +453,42 @@ private extension FacebookAudienceNetworkNativeAdView {
     }
 }
 
-
-// MARK: - Ad Events
-
+// MARK: - Ad Events (Delegate Methods)
 extension FacebookAudienceNetworkNativeAdView {
 
-    func nativeAd(_ nativeAd: FBNativeAd, didFailWithError error: Error) {
-        print("NativeAd > Failed: \(error.localizedDescription)")
-        let details = FacebookAdErrorDetails(fromSDKError: error)
+    nonisolated func nativeAd(_ nativeAd: FBNativeAd, didFailWithError error: Error) {
+        Task { @MainActor in
+            print("NativeAd > Failed: \(error.localizedDescription)")
+            let details = FacebookAdErrorDetails(fromSDKError: error)
 
-        channel?.invokeMethod(FANConstant.ERROR_METHOD, arguments: [
-            FANConstant.PLACEMENT_ID_ARG: nativeAd.placementID,
-            FANConstant.INVALIDATED_ARG: nativeAd.isAdValid,
-            FANConstant.ERROR_CODE_ARG: details?.code as Any,
-            FANConstant.ERROR_MESSAGE_ARG: details?.message as Any
-        ])
+            channel.invokeMethod(FANConstant.ERROR_METHOD, arguments: [
+                FANConstant.PLACEMENT_ID_ARG: nativeAd.placementID,
+                FANConstant.INVALIDATED_ARG: nativeAd.isAdValid,
+                FANConstant.ERROR_CODE_ARG: details?.code as Any,
+                FANConstant.ERROR_MESSAGE_ARG: details?.message as Any
+            ])
+        }
     }
 
-    func nativeAdWillLogImpression(_ nativeAd: FBNativeAd) {
-        print("NativeAd > WillLogImpression")
+    nonisolated func nativeAdWillLogImpression(_ nativeAd: FBNativeAd) {
+        Task { @MainActor in
+            print("NativeAd > WillLogImpression")
 
-        channel?.invokeMethod(FANConstant.LOGGING_IMPRESSION_METHOD, arguments: [
-            FANConstant.PLACEMENT_ID_ARG: nativeAd.placementID,
-            FANConstant.INVALIDATED_ARG: nativeAd.isAdValid
-        ])
+            channel.invokeMethod(FANConstant.LOGGING_IMPRESSION_METHOD, arguments: [
+                FANConstant.PLACEMENT_ID_ARG: nativeAd.placementID,
+                FANConstant.INVALIDATED_ARG: nativeAd.isAdValid
+            ])
+        }
     }
 
-    func nativeAdDidClick(_ nativeAd: FBNativeAd) {
-        print("NativeAd > Click")
+    nonisolated func nativeAdDidClick(_ nativeAd: FBNativeAd) {
+        Task { @MainActor in
+            print("NativeAd > Click")
 
-        channel?.invokeMethod(FANConstant.CLICKED_METHOD, arguments: [
-            FANConstant.PLACEMENT_ID_ARG: nativeAd.placementID,
-            FANConstant.INVALIDATED_ARG: nativeAd.isAdValid
-        ])
+            channel.invokeMethod(FANConstant.CLICKED_METHOD, arguments: [
+                FANConstant.PLACEMENT_ID_ARG: nativeAd.placementID,
+                FANConstant.INVALIDATED_ARG: nativeAd.isAdValid
+            ])
+        }
     }
 }

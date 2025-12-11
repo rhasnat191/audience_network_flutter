@@ -3,6 +3,7 @@ import Flutter
 import FBAudienceNetwork
 import UIKit
 
+@MainActor
 final class FacebookAudienceNetworkRewardedAdPlugin: NSObject, FBRewardedVideoAdDelegate {
 
     private let channel: FlutterMethodChannel
@@ -17,7 +18,9 @@ final class FacebookAudienceNetworkRewardedAdPlugin: NSObject, FBRewardedVideoAd
 
         channel.setMethodCallHandler { [weak self] call, result in
             guard let self else { return }
-            self.handle(call, result: result)
+            Task { @MainActor in
+                self.handle(call, result: result)
+            }
         }
 
         print("RewardedAdPlugin > ready")
@@ -101,30 +104,29 @@ private extension FacebookAudienceNetworkRewardedAdPlugin {
             return false
         }
 
-        // Fetch root view controller
-        guard let rootVC = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .flatMap({ $0.windows })
-            .first(where: { $0.isKeyWindow })?
-            .rootViewController
-        else {
-            print("RewardedAd > No root view controller")
-            return false
-        }
-
-        // Closure MUST return Void (not Bool)
-        let showBlock: () -> Void = { [weak self] in
-            guard let _ = self else { return }
+        let showBlock = { @MainActor [weak self] in
+            guard self != nil else { return }
+            
+            guard let rootVC = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .flatMap({ $0.windows })
+                .first(where: { $0.isKeyWindow })?
+                .rootViewController
+            else {
+                print("RewardedAd > No root view controller")
+                return
+            }
+            
             ad.show(fromRootViewController: rootVC)
         }
 
         if delay > 0 {
-            DispatchQueue.main.asyncAfter(
-                deadline: .now() + .seconds(delay),
-                execute: showBlock
-            )
+            Task {
+                try? await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000_000)
+                await showBlock()
+            }
         } else {
-            DispatchQueue.main.async(execute: showBlock)
+            Task { await showBlock() }
         }
 
         return true
@@ -152,91 +154,109 @@ private extension FacebookAudienceNetworkRewardedAdPlugin {
 // MARK: - FAN Delegate Methods
 extension FacebookAudienceNetworkRewardedAdPlugin {
 
-    func rewardedVideoAd(_ rewardedVideoAd: FBRewardedVideoAd, didFailWithError error: Error) {
-        print("RewardedAd > Failed: \(error.localizedDescription)")
+    nonisolated func rewardedVideoAd(_ rewardedVideoAd: FBRewardedVideoAd, didFailWithError error: Error) {
+        Task { @MainActor in
+            print("RewardedAd > Failed: \(error.localizedDescription)")
 
-        guard let id = idsByAd[rewardedVideoAd] else { return }
+            guard let id = idsByAd[rewardedVideoAd] else { return }
 
-        let details = FacebookAdErrorDetails(fromSDKError: error)
+            let details = FacebookAdErrorDetails(fromSDKError: error)
 
-        channel.invokeMethod(FANConstant.ERROR_METHOD, arguments: [
-            FANConstant.ID_ARG: id,
-            FANConstant.PLACEMENT_ID_ARG: rewardedVideoAd.placementID,
-            FANConstant.INVALIDATED_ARG: rewardedVideoAd.isAdValid,
-            FANConstant.ERROR_CODE_ARG: details?.code as Any,
-            FANConstant.ERROR_MESSAGE_ARG: details?.message as Any
-        ])
+            channel.invokeMethod(FANConstant.ERROR_METHOD, arguments: [
+                FANConstant.ID_ARG: id,
+                FANConstant.PLACEMENT_ID_ARG: rewardedVideoAd.placementID,
+                FANConstant.INVALIDATED_ARG: rewardedVideoAd.isAdValid,
+                FANConstant.ERROR_CODE_ARG: details?.code as Any,
+                FANConstant.ERROR_MESSAGE_ARG: details?.message as Any
+            ])
+        }
     }
 
-    func rewardedVideoAdDidLoad(_ rewardedVideoAd: FBRewardedVideoAd) {
-        print("RewardedAd > Loaded")
+    nonisolated func rewardedVideoAdDidLoad(_ rewardedVideoAd: FBRewardedVideoAd) {
+        Task { @MainActor in
+            print("RewardedAd > Loaded")
 
-        guard let id = idsByAd[rewardedVideoAd] else { return }
+            guard let id = idsByAd[rewardedVideoAd] else { return }
 
-        channel.invokeMethod(FANConstant.LOADED_METHOD, arguments: [
-            FANConstant.ID_ARG: id,
-            FANConstant.PLACEMENT_ID_ARG: rewardedVideoAd.placementID,
-            FANConstant.INVALIDATED_ARG: rewardedVideoAd.isAdValid
-        ])
+            channel.invokeMethod(FANConstant.LOADED_METHOD, arguments: [
+                FANConstant.ID_ARG: id,
+                FANConstant.PLACEMENT_ID_ARG: rewardedVideoAd.placementID,
+                FANConstant.INVALIDATED_ARG: rewardedVideoAd.isAdValid
+            ])
+        }
     }
 
-    func rewardedVideoAdDidClick(_ rewardedVideoAd: FBRewardedVideoAd) {
-        print("RewardedAd > Clicked")
+    nonisolated func rewardedVideoAdDidClick(_ rewardedVideoAd: FBRewardedVideoAd) {
+        Task { @MainActor in
+            print("RewardedAd > Clicked")
 
-        guard let id = idsByAd[rewardedVideoAd] else { return }
+            guard let id = idsByAd[rewardedVideoAd] else { return }
 
-        channel.invokeMethod(FANConstant.CLICKED_METHOD, arguments: [
-            FANConstant.ID_ARG: id,
-            FANConstant.PLACEMENT_ID_ARG: rewardedVideoAd.placementID,
-            FANConstant.INVALIDATED_ARG: rewardedVideoAd.isAdValid
-        ])
+            channel.invokeMethod(FANConstant.CLICKED_METHOD, arguments: [
+                FANConstant.ID_ARG: id,
+                FANConstant.PLACEMENT_ID_ARG: rewardedVideoAd.placementID,
+                FANConstant.INVALIDATED_ARG: rewardedVideoAd.isAdValid
+            ])
+        }
     }
 
-    func rewardedVideoAdWillLogImpression(_ rewardedVideoAd: FBRewardedVideoAd) {
-        print("RewardedAd > Impression")
+    nonisolated func rewardedVideoAdWillLogImpression(_ rewardedVideoAd: FBRewardedVideoAd) {
+        Task { @MainActor in
+            print("RewardedAd > Impression")
 
-        guard let id = idsByAd[rewardedVideoAd] else { return }
+            guard let id = idsByAd[rewardedVideoAd] else { return }
 
-        channel.invokeMethod(FANConstant.LOGGING_IMPRESSION_METHOD, arguments: [
-            FANConstant.ID_ARG: id,
-            FANConstant.PLACEMENT_ID_ARG: rewardedVideoAd.placementID,
-            FANConstant.INVALIDATED_ARG: rewardedVideoAd.isAdValid
-        ])
+            channel.invokeMethod(FANConstant.LOGGING_IMPRESSION_METHOD, arguments: [
+                FANConstant.ID_ARG: id,
+                FANConstant.PLACEMENT_ID_ARG: rewardedVideoAd.placementID,
+                FANConstant.INVALIDATED_ARG: rewardedVideoAd.isAdValid
+            ])
+        }
     }
 
-    func rewardedVideoAdVideoComplete(_ rewardedVideoAd: FBRewardedVideoAd) {
-        print("RewardedAd > Completed")
+    nonisolated func rewardedVideoAdVideoComplete(_ rewardedVideoAd: FBRewardedVideoAd) {
+        Task { @MainActor in
+            print("RewardedAd > Completed")
 
-        guard let id = idsByAd[rewardedVideoAd] else { return }
+            guard let id = idsByAd[rewardedVideoAd] else { return }
 
-        channel.invokeMethod(FANConstant.REWARDED_VIDEO_COMPLETE_METHOD, arguments: [
-            FANConstant.ID_ARG: id,
-            FANConstant.PLACEMENT_ID_ARG: rewardedVideoAd.placementID,
-            FANConstant.INVALIDATED_ARG: rewardedVideoAd.isAdValid
-        ])
+            channel.invokeMethod(FANConstant.REWARDED_VIDEO_COMPLETE_METHOD, arguments: [
+                FANConstant.ID_ARG: id,
+                FANConstant.PLACEMENT_ID_ARG: rewardedVideoAd.placementID,
+                FANConstant.INVALIDATED_ARG: rewardedVideoAd.isAdValid
+            ])
+        }
     }
 
-    func rewardedVideoAdDidClose(_ rewardedVideoAd: FBRewardedVideoAd) {
-        print("RewardedAd > Closed")
+    nonisolated func rewardedVideoAdDidClose(_ rewardedVideoAd: FBRewardedVideoAd) {
+        Task { @MainActor in
+            print("RewardedAd > Closed")
 
-        guard let id = idsByAd[rewardedVideoAd] else { return }
+            guard let id = idsByAd[rewardedVideoAd] else { return }
 
-        channel.invokeMethod(FANConstant.REWARDED_VIDEO_CLOSED_METHOD, arguments: [
-            FANConstant.ID_ARG: id,
-            FANConstant.PLACEMENT_ID_ARG: rewardedVideoAd.placementID,
-            FANConstant.INVALIDATED_ARG: rewardedVideoAd.isAdValid
-        ])
+            channel.invokeMethod(FANConstant.REWARDED_VIDEO_CLOSED_METHOD, arguments: [
+                FANConstant.ID_ARG: id,
+                FANConstant.PLACEMENT_ID_ARG: rewardedVideoAd.placementID,
+                FANConstant.INVALIDATED_ARG: rewardedVideoAd.isAdValid
+            ])
+        }
     }
 
-    func rewardedVideoAdWillClose(_ rewardedVideoAd: FBRewardedVideoAd) {
-        print("RewardedAd > WillClose")
+    nonisolated func rewardedVideoAdWillClose(_ rewardedVideoAd: FBRewardedVideoAd) {
+        Task { @MainActor in
+            print("RewardedAd > WillClose")
+        }
     }
 
-    func rewardedVideoAdServerRewardDidFail(_ rewardedVideoAd: FBRewardedVideoAd) {
-        print("RewardedAd > ServerRewardFail")
+    nonisolated func rewardedVideoAdServerRewardDidFail(_ rewardedVideoAd: FBRewardedVideoAd) {
+        Task { @MainActor in
+            print("RewardedAd > ServerRewardFail")
+        }
     }
 
-    func rewardedVideoAdServerRewardDidSucceed(_ rewardedVideoAd: FBRewardedVideoAd) {
-        print("RewardedAd > ServerRewardSuccess")
+    nonisolated func rewardedVideoAdServerRewardDidSucceed(_ rewardedVideoAd: FBRewardedVideoAd) {
+        Task { @MainActor in
+            print("RewardedAd > ServerRewardSuccess")
+        }
     }
 }
