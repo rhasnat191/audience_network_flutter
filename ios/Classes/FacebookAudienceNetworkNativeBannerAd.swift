@@ -179,7 +179,7 @@ extension FacebookAudienceNetworkNativeBannerAdView {
         initNativeAdViewAttributes()
         registerTemplateView()
 
-        channel.invokeMethod(FANConstant.LOADED_METHOD, arguments: [
+        channel?.invokeMethod(FANConstant.LOADED_METHOD, arguments: [
             FANConstant.PLACEMENT_ID_ARG: nativeBannerAd.placementID,
             FANConstant.INVALIDATED_ARG: nativeBannerAd.isAdValid
         ])
@@ -192,7 +192,7 @@ extension FacebookAudienceNetworkNativeBannerAdView {
     func nativeBannerAdWillLogImpression(_ nativeBannerAd: FBNativeBannerAd) {
         print("NativeBannerAd > WillLogImpression")
 
-        channel.invokeMethod(FANConstant.LOGGING_IMPRESSION_METHOD, arguments: [
+        channel?.invokeMethod(FANConstant.LOGGING_IMPRESSION_METHOD, arguments: [
             FANConstant.PLACEMENT_ID_ARG: nativeBannerAd.placementID,
             FANConstant.INVALIDATED_ARG: nativeBannerAd.isAdValid
         ])
@@ -203,7 +203,7 @@ extension FacebookAudienceNetworkNativeBannerAdView {
 
         let details = FacebookAdErrorDetails(fromSDKError: error)
 
-        channel.invokeMethod(FANConstant.ERROR_METHOD, arguments: [
+        channel?.invokeMethod(FANConstant.ERROR_METHOD, arguments: [
             FANConstant.PLACEMENT_ID_ARG: nativeBannerAd.placementID,
             FANConstant.INVALIDATED_ARG: nativeBannerAd.isAdValid,
             FANConstant.ERROR_CODE_ARG: details?.code as Any,
@@ -214,7 +214,7 @@ extension FacebookAudienceNetworkNativeBannerAdView {
     func nativeBannerAdDidClick(_ nativeBannerAd: FBNativeBannerAd) {
         print("NativeBannerAd > Clicked")
 
-        channel.invokeMethod(FANConstant.CLICKED_METHOD, arguments: [
+        channel?.invokeMethod(FANConstant.CLICKED_METHOD, arguments: [
             FANConstant.PLACEMENT_ID_ARG: nativeBannerAd.placementID,
             FANConstant.INVALIDATED_ARG: nativeBannerAd.isAdValid
         ])

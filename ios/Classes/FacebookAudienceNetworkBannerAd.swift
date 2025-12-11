@@ -212,7 +212,7 @@ extension FacebookAudienceNetworkBannerAdView {
     func adViewDidClick(_ adView: FBAdView) {
         print("FAN > BannerAdView > adViewDidClick")
 
-        channel.invokeMethod(FANConstant.CLICKED_METHOD, arguments: [
+        channel?.invokeMethod(FANConstant.CLICKED_METHOD, arguments: [
             FANConstant.PLACEMENT_ID_ARG: adView.placementID,
             FANConstant.INVALIDATED_ARG: adView.isAdValid
         ])
@@ -229,7 +229,7 @@ extension FacebookAudienceNetworkBannerAdView {
             self.bannerAd = adView
             addBannerToView()
 
-            channel.invokeMethod(FANConstant.LOADED_METHOD, arguments: [
+            channel?.invokeMethod(FANConstant.LOADED_METHOD, arguments: [
                 FANConstant.PLACEMENT_ID_ARG: adView.placementID,
                 FANConstant.INVALIDATED_ARG: adView.isAdValid
             ])
@@ -242,7 +242,7 @@ extension FacebookAudienceNetworkBannerAdView {
 
         let details = FacebookAdErrorDetails(fromSDKError: error)
 
-        channel.invokeMethod(FANConstant.ERROR_METHOD, arguments: [
+        channel?.invokeMethod(FANConstant.ERROR_METHOD, arguments: [
             FANConstant.PLACEMENT_ID_ARG: adView.placementID,
             FANConstant.INVALIDATED_ARG: adView.isAdValid,
             FANConstant.ERROR_CODE_ARG: details?.code as Any,
@@ -253,7 +253,7 @@ extension FacebookAudienceNetworkBannerAdView {
     func adViewWillLogImpression(_ adView: FBAdView) {
         print("FAN > BannerAdView > adViewWillLogImpression")
 
-        channel.invokeMethod(FANConstant.LOGGING_IMPRESSION_METHOD, arguments: [
+        channel?.invokeMethod(FANConstant.LOGGING_IMPRESSION_METHOD, arguments: [
             FANConstant.PLACEMENT_ID_ARG: adView.placementID,
             FANConstant.INVALIDATED_ARG: adView.isAdValid
         ])

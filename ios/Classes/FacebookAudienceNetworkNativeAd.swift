@@ -210,7 +210,7 @@ extension FacebookAudienceNetworkNativeAdView {
             FANConstant.PLACEMENT_ID_ARG: nativeAd.placementID,
             FANConstant.INVALIDATED_ARG: nativeAd.isAdValid
         ]
-        channel.invokeMethod(FANConstant.LOADED_METHOD, arguments: arg)
+        channel?.invokeMethod(FANConstant.LOADED_METHOD, arguments: arg)
     }
 }
 
@@ -484,7 +484,7 @@ extension FacebookAudienceNetworkNativeAdView {
         print("NativeAd > Failed: \(error.localizedDescription)")
         let details = FacebookAdErrorDetails(fromSDKError: error)
 
-        channel.invokeMethod(FANConstant.ERROR_METHOD, arguments: [
+        channel?.invokeMethod(FANConstant.ERROR_METHOD, arguments: [
             FANConstant.PLACEMENT_ID_ARG: nativeAd.placementID,
             FANConstant.INVALIDATED_ARG: nativeAd.isAdValid,
             FANConstant.ERROR_CODE_ARG: details?.code as Any,
@@ -495,7 +495,7 @@ extension FacebookAudienceNetworkNativeAdView {
     func nativeAdWillLogImpression(_ nativeAd: FBNativeAd) {
         print("NativeAd > WillLogImpression")
 
-        channel.invokeMethod(FANConstant.LOGGING_IMPRESSION_METHOD, arguments: [
+        channel?.invokeMethod(FANConstant.LOGGING_IMPRESSION_METHOD, arguments: [
             FANConstant.PLACEMENT_ID_ARG: nativeAd.placementID,
             FANConstant.INVALIDATED_ARG: nativeAd.isAdValid
         ])
@@ -504,7 +504,7 @@ extension FacebookAudienceNetworkNativeAdView {
     func nativeAdDidClick(_ nativeAd: FBNativeAd) {
         print("NativeAd > Click")
 
-        channel.invokeMethod(FANConstant.CLICKED_METHOD, arguments: [
+        channel?.invokeMethod(FANConstant.CLICKED_METHOD, arguments: [
             FANConstant.PLACEMENT_ID_ARG: nativeAd.placementID,
             FANConstant.INVALIDATED_ARG: nativeAd.isAdValid
         ])
