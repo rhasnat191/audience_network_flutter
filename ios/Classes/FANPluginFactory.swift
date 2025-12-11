@@ -42,7 +42,9 @@ class FANPluginFactory: NSObject {
                     result(results.isSuccess)
                 }
             default:
-                result(FlutterMethodNotImplemented)
+                DispatchQueue.main.async {
+                    result(FlutterMethodNotImplemented)
+                }
             }
         }
         

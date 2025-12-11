@@ -26,7 +26,9 @@ class FacebookAudienceNetworkInterstitialAdPlugin: NSObject, FBInterstitialAdDel
                 print("FacebookAudienceNetworkInterstitialAdPlugin > destroyInterstitialAd")
                 result(self.destroyAd(call))
             default:
-                result(FlutterMethodNotImplemented)
+                DispatchQueue.main.async {
+                    result(FlutterMethodNotImplemented)
+                }
             }
         }
         

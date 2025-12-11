@@ -114,7 +114,9 @@ class FacebookAudienceNetworkNativeAdView: NSObject, FlutterPlatformView, FBNati
         case "init":
             result(true)
         default:
-            result(FlutterMethodNotImplemented)
+            DispatchQueue.main.async {
+                result(FlutterMethodNotImplemented)
+            }
         }
     }
 

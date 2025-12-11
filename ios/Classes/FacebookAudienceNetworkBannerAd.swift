@@ -84,7 +84,9 @@ class FacebookAudienceNetworkBannerAdView: NSObject, FlutterPlatformView, FBAdVi
         case "init":
             result(true)
         default:
-            result(FlutterMethodNotImplemented)
+            DispatchQueue.main.async {
+                result(FlutterMethodNotImplemented)
+            }
         }
     }
     

@@ -32,7 +32,10 @@ class FacebookAudienceNetworkRewardedAdPlugin: NSObject, FBRewardedVideoAdDelega
             case "destroyRewardedAd":
                 print("FacebookAudienceNetworkRewardedAdPlugin> destroyRewardedAd")
                 result(self.destroyAd(call))
-            default: result(FlutterMethodNotImplemented)
+            default:
+                DispatchQueue.main.async {
+                    result(FlutterMethodNotImplemented)
+                }
             }
         }
         
