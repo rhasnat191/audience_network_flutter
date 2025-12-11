@@ -1,7 +1,6 @@
 import Flutter
 import UIKit
 
-@MainActor
 public class FANPlugin: NSObject, FlutterPlugin {
 
     public static func register(with registrar: FlutterPluginRegistrar) {

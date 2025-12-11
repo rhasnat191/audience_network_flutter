@@ -673,9 +673,6 @@ final class FacebookAudienceNetworkNativeAdLayout {
 }
 
 
-// MARK: - Native Ad View (Swift 6 Safe)
-
-@MainActor
 final class FacebookAudienceNetworkNativeAdView: NSObject,
                                                  FlutterPlatformView,
                                                  FBNativeAdDelegate {

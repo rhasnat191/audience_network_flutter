@@ -219,7 +219,6 @@ import Flutter
 import FBAudienceNetwork
 import UIKit
 
-@MainActor
 final class FacebookAudienceNetworkRewardedAdPlugin: NSObject, FBRewardedVideoAdDelegate {
 
     private let channel: FlutterMethodChannel

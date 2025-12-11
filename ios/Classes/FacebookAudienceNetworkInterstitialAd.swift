@@ -219,7 +219,6 @@ import Flutter
 import FBAudienceNetwork
 import UIKit
 
-@MainActor
 final class FacebookAudienceNetworkInterstitialAdPlugin: NSObject, FBInterstitialAdDelegate {
 
     private let channel: FlutterMethodChannel

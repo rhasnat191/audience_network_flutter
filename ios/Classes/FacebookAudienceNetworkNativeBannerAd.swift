@@ -35,10 +35,7 @@ final class FacebookAudienceNetworkNativeBannerAdFactory: NSObject, FlutterPlatf
 }
 
 // MARK: - Native Banner Ad View
-@MainActor
-final class FacebookAudienceNetworkNativeBannerAdView: NSObject,
-                                                       FlutterPlatformView,
-                                                       FBNativeBannerAdDelegate {
+final class FacebookAudienceNetworkNativeBannerAdView: NSObject, FlutterPlatformView, FBNativeBannerAdDelegate {
 
     private let frame: CGRect
     private let viewId: Int64

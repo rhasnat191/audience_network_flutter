@@ -292,7 +292,6 @@ final class FacebookAudienceNetworkBannerAdView: NSObject,
     private let registrar: FlutterPluginRegistrar
     private let params: [String: Any]
     private let channel: FlutterMethodChannel
-
     private var mainView = UIView()
     private var bannerAd: FBAdView?
 
