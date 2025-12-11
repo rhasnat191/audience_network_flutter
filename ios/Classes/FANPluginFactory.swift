@@ -87,7 +87,9 @@ private extension FANPluginFactory {
             handleInitialization(call, result: result)
 
         default:
-            result(FlutterMethodNotImplemented)
+            Task { @MainActor in
+               result(FlutterMethodNotImplemented)
+            }
         }
     }
 }
