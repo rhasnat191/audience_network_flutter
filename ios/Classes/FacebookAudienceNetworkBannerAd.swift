@@ -1,245 +1,245 @@
 import Foundation
 import Flutter
 import FBAudienceNetwork
-import UIKit
 
-// MARK: - Banner Ad Factory (NOT @MainActor)
-final class FacebookAudienceNetworkBannerAdFactory: NSObject, FlutterPlatformViewFactory {
 
-    private unowned let registrar: FlutterPluginRegistrar
-
+class FacebookAudienceNetworkBannerAdFactory: NSObject, FlutterPlatformViewFactory {
+    let registrar: FlutterPluginRegistrar
     init(_registrar: FlutterPluginRegistrar) {
-        print("FAN > BannerAdFactory > register")
-        self.registrar = _registrar
+        print("FAN > BannerAdFactory > Factory register")
+        
+        registrar = _registrar
         super.init()
     }
-
+    
     func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
-        print("FAN > BannerAdFactory > createArgsCodec")
+        print("FAN > BannerAdFactory > Factory createArgsCodec")
+        
         return FlutterStandardMessageCodec.sharedInstance()
     }
-
-    func create(withFrame frame: CGRect,
-                viewIdentifier viewId: Int64,
-                arguments args: Any?) -> FlutterPlatformView {
-        print("FAN > BannerAdFactory > create view")
-        return FacebookAudienceNetworkBannerAdView(
-            frame: frame,
-            viewId: viewId,
-            params: args as? [String: Any],
-            registrar: registrar
-        )
+    
+    func create(withFrame frame: CGRect, viewIdentifier viewId: Int64, arguments args: Any?) -> FlutterPlatformView {
+        print("FAN >  BannerAdFactory > Factory create")
+        
+        return FacebookAudienceNetworkBannerAdView(_frame: frame,
+                                                        _viewId: viewId,
+                                                        _params: args as? Dictionary<String, Any> ?? nil,
+                                                        _registrar: registrar)
     }
 }
 
-// MARK: - Banner Ad View
-@MainActor
-final class FacebookAudienceNetworkBannerAdView: NSObject,
-                                                 FlutterPlatformView,
-                                                 FBAdViewDelegate {
 
+class FacebookAudienceNetworkBannerAdView: NSObject, FlutterPlatformView, FBAdViewDelegate {
     private let frame: CGRect
     private let viewId: Int64
     private let registrar: FlutterPluginRegistrar
     private let params: [String: Any]
     private let channel: FlutterMethodChannel
-    private lazy var mainView: UIView = UIView()
-    private var bannerAd: FBAdView?
-
-    nonisolated init(frame: CGRect,
-         viewId: Int64,
-         params: [String: Any]?,
-         registrar: FlutterPluginRegistrar) {
-
-        print("FAN > BannerAdView > init")
-
-        self.frame = frame
-        self.viewId = viewId
-        self.registrar = registrar
-        self.params = params ?? [:]
-        self.channel = FlutterMethodChannel(
+    
+    var mainView: UIView!
+    var bannerAd: FBAdView!
+    
+    
+    init(_frame: CGRect,
+         _viewId: Int64,
+         _params: [String: Any]?,
+         _registrar: FlutterPluginRegistrar) {
+        
+        frame = _frame
+        viewId = _viewId
+        registrar = _registrar
+        params = _params!
+        channel = FlutterMethodChannel(
             name: "\(FANConstant.BANNER_AD_CHANNEL)_\(viewId)",
             binaryMessenger: registrar.messenger()
         )
-
+        
         super.init()
         
-        Task { @MainActor in
-            self.channel.setMethodCallHandler { [weak self] call, result in
-                guard let self else { return }
-                self.handle(call, result: result)
-            }
-            
-            self.setupView()
-            self.setupFacebookAd()
+        channel.setMethodCallHandler { [weak self] (call, result) in
+            guard let `self` = self else { return }
+            `self`.handle(call, result: result)
         }
+        
+        initView()
+        initFB()
     }
-
+    
     deinit {
-        print("FAN > BannerAdView > deinit")
+        print("FAN > BannerAdView > is deninit")
     }
-
-    nonisolated func view() -> UIView {
-        MainActor.assumeIsolated {
-            mainView
-        }
+    
+    func view() -> UIView {
+        return mainView
     }
-}
-
-// MARK: - Method Handling
-extension FacebookAudienceNetworkBannerAdView {
-
+    
+    
+    /**
+     * handle
+     */
     func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         switch call.method {
-        case "initialization", "init":
+        case "initialization":
+            result(true)
+        case "init":
             result(true)
         default:
             result(FlutterMethodNotImplemented)
         }
     }
-}
-
-// MARK: - View Init
-private extension FacebookAudienceNetworkBannerAdView {
-
-    func setupView() {
-        print("BannerAdView > setupView")
-        mainView = UIView(frame: frame)
-        mainView.backgroundColor = .white
+    
+    
+    /**
+     * initView
+     **/
+    func initView() {
+        print("BannerAdView > init initView")
+        
+        self.mainView = UIView(frame: self.frame)
+        self.mainView.backgroundColor = UIColor.white
     }
-
-    func setupFacebookAd() {
-        print("FAN > BannerAdView > setupFacebookAd")
-
-        let isBanner = params["banner_ad"] as? Bool ?? false
-
-        if isBanner {
-            // TODO: Native banner logic if needed
+    
+    
+    /**
+     * init Ad
+     **/
+    func initFB() {
+        print("FAN > BannerAdView > init initFB")
+        
+        let existsBannerId: Bool = (self.params["banner_ad"] != nil) ? true : false
+        let valueBannerAd: Bool = (existsBannerId) ? self.params["banner_ad"] as! Bool : false
+        
+        if (existsBannerId && valueBannerAd) {
+            // init banner
         } else {
-            initializeBannerAd()
+            // init native
+            initBannerAd()
+//            initBannerAdViewAttributes()
         }
     }
-}
-
-// MARK: - Banner Ad Init
-private extension FacebookAudienceNetworkBannerAdView {
-
-    func initializeBannerAd() {
-        print("FAN > BannerAdView > initializeBannerAd")
-
-        guard let placementId = params["id"] as? String else {
-            print("FAN > BannerAdView > Missing 'id' param")
-            return
-        }
-
-        let height = params["height"] as? CGFloat ?? 50.0
-        let adSize: FBAdSize
-
-        switch height {
-        case 250...:
+    
+    
+    /**
+     * load
+     **/
+    func initBannerAd() {
+        print("FAN > BannerAdView > init initBannerAd")
+        
+        let existsId: Bool = (self.params["id"] != nil)
+            ? true : false
+        let valueId: String = existsId
+            ? self.params["id"] as! String : ""
+        let height: CGFloat = (self.params["height"] != nil)
+            ? self.params["height"] as! CGFloat : 50.0
+        
+        var adSize = kFBAdSizeHeight50Banner
+        if (height >= 250.0)
+        {
             adSize = kFBAdSizeHeight250Rectangle
-        case 90...:
+        }
+        else if (height >= 90.0)
+        {
             adSize = kFBAdSizeHeight90Banner
-        default:
-            adSize = kFBAdSizeHeight50Banner
         }
-
-        guard let rootVC = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .flatMap({ $0.windows })
-            .first(where: { $0.isKeyWindow })?.rootViewController else {
-
-            print("FAN > BannerAdView > rootViewController not found")
-            return
+        
+        if (existsId) {
+            self.bannerAd = FBAdView.init(placementID: valueId, adSize: adSize, rootViewController: UIApplication.shared.keyWindow?.rootViewController)
+            self.bannerAd.delegate = self
+            self.bannerAd.loadAd()
         }
-
-        let adView = FBAdView(placementID: placementId,
-                              adSize: adSize,
-                              rootViewController: rootVC)
-
+    }
+    
+    
+    /**
+     * using native ad
+     */
+    func regBannerAdViewTemplate() {
+        print("FAN > BannerAdView > regNativeAdViewTemplate")
+        
+        self.mainView.addSubview(self.bannerAd)
+        self.mainView.layoutIfNeeded()
+    }
+    
+    
+    /**
+     Sent after an ad has been clicked by the person.
+     
+     @param adView An FBAdView object sending the message.
+     */
+    func adViewDidClick(_ adView :FBAdView) {
+        print("FAN > BannerAdView > adViewDidClick")
+        let placement_id: String = adView.placementID
+        let invalidated: Bool = adView.isAdValid
+        let arg: [String: Any] = [
+            FANConstant.PLACEMENT_ID_ARG: placement_id,
+            FANConstant.INVALIDATED_ARG: invalidated,
+        ]
+        self.channel.invokeMethod(FANConstant.CLICKED_METHOD, arguments: arg)
+    }
+    /**
+     When an ad is clicked, the modal view will be presented. And when the user finishes the
+     interaction with the modal view and dismiss it, this message will be sent, returning control
+     to the application.
+     
+     @param adView An FBAdView object sending the message.
+     */
+    func adViewDidFinishHandlingClick(_ adView :FBAdView) {
+        print("FAN > BannerAdView > adViewDidFinishHandlingClick")
+    }
+    /**
+     Sent when an ad has been successfully loaded.
+     
+     @param adView An FBAdView object sending the message.
+     */
+    func adViewDidLoad(_ adView :FBAdView) {
+        print("FAN > BannerAdView > adViewDidLoad")
         self.bannerAd = adView
-        adView.delegate = self
-        adView.loadAd()
+        regBannerAdViewTemplate()
+        
+        let placement_id: String = adView.placementID
+        let invalidated: Bool = adView.isAdValid
+        let arg: [String: Any] = [
+            FANConstant.PLACEMENT_ID_ARG: placement_id,
+            FANConstant.INVALIDATED_ARG: invalidated,
+        ]
+        self.channel.invokeMethod(FANConstant.LOADED_METHOD, arguments: arg)
+    }
+    /**
+     Sent after an FBAdView fails to load the ad.
+     
+     @param adView An FBAdView object sending the message.
+     @param error An error object containing details of the error.
+     */
+    func  adView(_ adView :FBAdView, didFailWithError error: Error) {
+        print("BannerAdView > adView")
+        let errorDetails = FacebookAdErrorDetails(fromSDKError: error)
+        let placement_id: String = adView.placementID
+        let invalidated: Bool = adView.isAdValid
+        let arg: [String: Any] = [
+            FANConstant.PLACEMENT_ID_ARG: placement_id,
+            FANConstant.INVALIDATED_ARG: invalidated,
+            FANConstant.ERROR_CODE_ARG: errorDetails?.code as Any,
+            FANConstant.ERROR_MESSAGE_ARG: errorDetails?.message as Any,
+        ]
+        self.channel.invokeMethod(FANConstant.ERROR_METHOD, arguments: arg)
+    }
+    
+    /**
+     Sent immediately before the impression of an FBAdView object will be logged.
+     
+     @param adView An FBAdView object sending the message.
+     */
+    func adViewWillLogImpression(_ adView :FBAdView) {
+        print("BannerAdView > adViewWillLogImpression")
+        let placement_id: String = adView.placementID
+        let invalidated: Bool = adView.isAdValid
+        let arg: [String: Any] = [
+            FANConstant.PLACEMENT_ID_ARG: placement_id,
+            FANConstant.INVALIDATED_ARG: invalidated,
+        ]
+        self.channel.invokeMethod(FANConstant.LOGGING_IMPRESSION_METHOD, arguments: arg)
     }
 }
 
-// MARK: - Banner Rendering
-private extension FacebookAudienceNetworkBannerAdView {
 
-    func addBannerToView() {
-        guard let bannerAd else { return }
 
-        print("FAN > BannerAdView > addBannerToView")
-
-        bannerAd.frame = CGRect(
-            x: 0,
-            y: 0,
-            width: mainView.frame.width,
-            height: bannerAd.frame.height
-        )
-
-        mainView.addSubview(bannerAd)
-        mainView.layoutIfNeeded()
-    }
-}
-
-// MARK: - FBAdViewDelegate
-extension FacebookAudienceNetworkBannerAdView {
-
-    nonisolated func adViewDidClick(_ adView: FBAdView) {
-        Task { @MainActor in
-            print("FAN > BannerAdView > adViewDidClick")
-
-            channel.invokeMethod(FANConstant.CLICKED_METHOD, arguments: [
-                FANConstant.PLACEMENT_ID_ARG: adView.placementID,
-                FANConstant.INVALIDATED_ARG: adView.isAdValid
-            ])
-        }
-    }
-
-    nonisolated func adViewDidFinishHandlingClick(_ adView: FBAdView) {
-        Task { @MainActor in
-            print("FAN > BannerAdView > adViewDidFinishHandlingClick")
-        }
-    }
-
-    nonisolated func adViewDidLoad(_ adView: FBAdView) {
-        Task { @MainActor in
-            print("FAN > BannerAdView > adViewDidLoad")
-
-            self.bannerAd = adView
-            self.addBannerToView()
-
-            channel.invokeMethod(FANConstant.LOADED_METHOD, arguments: [
-                FANConstant.PLACEMENT_ID_ARG: adView.placementID,
-                FANConstant.INVALIDATED_ARG: adView.isAdValid
-            ])
-        }
-    }
-
-    nonisolated func adView(_ adView: FBAdView, didFailWithError error: Error) {
-        Task { @MainActor in
-            print("FAN > BannerAdView > didFailWithError")
-
-            let details = FacebookAdErrorDetails(fromSDKError: error)
-
-            channel.invokeMethod(FANConstant.ERROR_METHOD, arguments: [
-                FANConstant.PLACEMENT_ID_ARG: adView.placementID,
-                FANConstant.INVALIDATED_ARG: adView.isAdValid,
-                FANConstant.ERROR_CODE_ARG: details?.code as Any,
-                FANConstant.ERROR_MESSAGE_ARG: details?.message as Any
-            ])
-        }
-    }
-
-    nonisolated func adViewWillLogImpression(_ adView: FBAdView) {
-        Task { @MainActor in
-            print("FAN > BannerAdView > adViewWillLogImpression")
-
-            channel.invokeMethod(FANConstant.LOGGING_IMPRESSION_METHOD, arguments: [
-                FANConstant.PLACEMENT_ID_ARG: adView.placementID,
-                FANConstant.INVALIDATED_ARG: adView.isAdValid
-            ])
-        }
-    }
-}

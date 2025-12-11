@@ -1,233 +1,272 @@
 import Foundation
 import Flutter
 import FBAudienceNetwork
-import UIKit
 
-// MARK: - Factory (NOT @MainActor)
-final class FacebookAudienceNetworkNativeBannerAdFactory: NSObject, FlutterPlatformViewFactory {
 
-    private unowned let registrar: FlutterPluginRegistrar
-
+class FacebookAudienceNetworkNativeBannerAdFactory: NSObject, FlutterPlatformViewFactory {
+    let registrar: FlutterPluginRegistrar
     init(_registrar: FlutterPluginRegistrar) {
         print("NativeBannerAd > Factory register")
-        self.registrar = _registrar
+        
+        registrar = _registrar
         super.init()
     }
-
+    
     func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
         print("NativeBannerAd > Factory createArgsCodec")
+        
         return FlutterStandardMessageCodec.sharedInstance()
     }
-
-    func create(withFrame frame: CGRect,
-                viewIdentifier viewId: Int64,
-                arguments args: Any?) -> FlutterPlatformView {
-
+    
+    func create(withFrame frame: CGRect, viewIdentifier viewId: Int64, arguments args: Any?) -> FlutterPlatformView {
         print("NativeBannerAd > Factory create")
-
-        return FacebookAudienceNetworkNativeBannerAdView(
-            frame: frame,
-            viewId: viewId,
-            params: args as? [String: Any] ?? [:],
-            registrar: registrar
-        )
+        
+        return FacebookAudienceNetworkNativeBannerAdView(_frame: frame,
+                                                        _viewId: viewId,
+                                                        _params: args as? Dictionary<String, Any> ?? nil,
+                                                        _registrar: registrar)
     }
 }
 
-// MARK: - Native Banner Ad View
-@MainActor
-final class FacebookAudienceNetworkNativeBannerAdView: NSObject, FlutterPlatformView, FBNativeBannerAdDelegate {
 
+class FacebookAudienceNetworkNativeBannerAdView: NSObject, FlutterPlatformView, FBNativeBannerAdDelegate {
     private let frame: CGRect
     private let viewId: Int64
     private let registrar: FlutterPluginRegistrar
     private let params: [String: Any]
     private let channel: FlutterMethodChannel
-    private lazy var mainView: UIView = UIView()
-    private var nativeBannerAd: FBNativeBannerAd?
-    private var nativeAdViewAttributes: FBNativeAdViewAttributes?
-
-    nonisolated init(frame: CGRect,
-         viewId: Int64,
-         params: [String: Any],
-         registrar: FlutterPluginRegistrar) {
-
-        print("NativeBannerAd > init")
-
-        self.frame = frame
-        self.viewId = viewId
-        self.params = params
-        self.registrar = registrar
-        self.channel = FlutterMethodChannel(
+    
+    var mainView: UIView!
+    var nativeBannerAd: FBNativeBannerAd!
+    var nativeAdViewAttributes: FBNativeAdViewAttributes!
+    
+    init(_frame: CGRect,
+         _viewId: Int64,
+         _params: [String: Any]?,
+         _registrar: FlutterPluginRegistrar) {
+        
+        frame = _frame
+        viewId = _viewId
+        registrar = _registrar
+        params = _params!
+        channel = FlutterMethodChannel(
             name: "\(FANConstant.NATIVE_BANNER_AD_CHANNEL)_\(viewId)",
             binaryMessenger: registrar.messenger()
         )
         
         super.init()
         
-        Task { @MainActor in
-            self.channel.setMethodCallHandler { [weak self] call, result in
-                self?.handle(call, result: result)
-            }
-            self.setupView()
-            self.loadNativeAd()
+        channel.setMethodCallHandler { [weak self] (call, result) in
+            guard let `self` = self else { return }
+            `self`.handle(call, result: result)
         }
+        
+        initView()
+        initFB()
     }
-
-    nonisolated func view() -> UIView {
-        MainActor.assumeIsolated {
-            mainView
-        }
-    }
-
+    
     deinit {
-        print("NativeBannerAd > deinit")
+        print("NativeBannerAd > is deninit")
     }
-}
-
-// MARK: - Flutter Call Handler
-private extension FacebookAudienceNetworkNativeBannerAdView {
-
+    
+    func view() -> UIView {
+        return mainView
+    }
+    
+    
+    /**
+     * handle
+     */
     func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         switch call.method {
-        case "initialization", "init":
+        case "initialization":
+            result(true)
+        case "init":
             result(true)
         default:
             result(FlutterMethodNotImplemented)
         }
     }
-}
-
-// MARK: - Setup Main View
-private extension FacebookAudienceNetworkNativeBannerAdView {
-
-    func setupView() {
-        print("NativeBannerAd > setupView")
-        mainView = UIView(frame: frame)
-        mainView.backgroundColor = .white
+    
+    
+    /**
+     * initView
+     **/
+    func initView() {
+        print("NativeBannerAd > init initView")
+        
+        self.mainView = UIView(frame: self.frame)
+        self.mainView.backgroundColor = UIColor.white
     }
-}
-
-// MARK: - Load Native Banner Ad
-private extension FacebookAudienceNetworkNativeBannerAdView {
-
-    func loadNativeAd() {
-        print("NativeBannerAd > loadNativeAd")
-
-        guard let placementId = params["id"] as? String else {
-            print("NativeBannerAd > Missing placement ID")
-            return
+    
+    
+    /**
+     * init Ad
+     **/
+    func initFB() {
+        print("NativeBannerAd > init initFB")
+        
+        initNativeAd()
+        initNativeAdViewAttributes()
+    }
+    
+    
+    /**
+     * load
+     **/
+    func initNativeAd() {
+        print("NativeBannerAd > init initNativeAd")
+        
+        let existsId: Bool = (self.params["id"] != nil) ? true : false
+        
+        if (existsId) {
+            let valueId: String = self.params["id"] as! String
+            self.nativeBannerAd = FBNativeBannerAd(placementID: valueId)
+            self.nativeBannerAd.delegate = self
+            self.nativeBannerAd.loadAd()
         }
-
-        let ad = FBNativeBannerAd(placementID: placementId)
-        self.nativeBannerAd = ad
-
-        ad.delegate = self
-        ad.loadAd()
     }
-
+    
     func initNativeAdViewAttributes() {
-        nativeAdViewAttributes = FBNativeAdViewAttributes()
+        print("NativeBannerAd > initNativeAdViewAttributes")
+
+//        let buttonColor: String = self.params["button_color"] as! String
+//        let buttonTitleColor: String = self.params["button_title_color"] as! String
+//        let bgColor: String = self.params["bg_color"] as! String
+//        let titleColor: String = self.params["title_color"] as! String
+//        let descColor: String = self.params["desc_color"] as! String
+//
+//        let buttonColorUIColor = UIColor.init(hexString: buttonColor)
+//        let buttonTitleColorUIColor = UIColor.init(hexString: buttonTitleColor)
+//        let bgColorUIColor = UIColor.init(hexString: bgColor)
+//        let titleColorUIColor = UIColor.init(hexString: titleColor)
+//        let descColorUIColor = UIColor.init(hexString: descColor)
+//
+//        self.nativeAdViewAttributes = FBNativeAdViewAttributes()
+//        self.nativeAdViewAttributes.buttonColor = buttonColorUIColor
+//        self.nativeAdViewAttributes.buttonTitleColor = buttonTitleColorUIColor
+//        self.nativeAdViewAttributes.backgroundColor = bgColorUIColor
+//        self.nativeAdViewAttributes.titleColor = titleColorUIColor
+//        self.nativeAdViewAttributes.descriptionColor = descColorUIColor
+//
+//        self.nativeAdViewAttributes.titleFont = UIFont(name: "Noteworthy", size: 15.0)
+//        self.nativeAdViewAttributes.buttonTitleFont = UIFont(name: "Futura", size: 12.0)
+    }
+    
+    /**
+     * using native ad
+     */
+    func regTemplate() {
+        print("NativeBannerAd > regNativeAdViewTemplate")
+        
+        let width: CGFloat = (self.params["width"] != nil) ? self.params["width"] as! CGFloat : UIScreen.main.bounds.size.width
+        let height: CGFloat = (self.params["height"] != nil) ? self.params["height"] as! CGFloat : 100.0
+        let viewType: FBNativeBannerAdViewType = getViewType(height)
+        let nativeBannerAdView = FBNativeBannerAdView.init(nativeBannerAd: self.nativeBannerAd, with: viewType)
+        nativeBannerAdView.frame = CGRect(x: 0.0, y: 0.0, width: width, height: height)
+        self.mainView.addSubview(nativeBannerAdView)
+        self.mainView.layoutIfNeeded()
+    }
+    
+    func getViewType(_ height:CGFloat) -> FBNativeBannerAdViewType {
+        var result: FBNativeBannerAdViewType = FBNativeBannerAdViewType.genericHeight100
+        
+        if height == 50.0 {
+            result = FBNativeBannerAdViewType.genericHeight50
+        } else if height == 100.0 {
+            result = FBNativeBannerAdViewType.genericHeight100
+        } else if height == 120.0 {
+            result = FBNativeBannerAdViewType.genericHeight120
+        }
+        return result
+    }
+    
+    
+    /**
+     Sent when an FBNativeBannerAd has been successfully loaded.
+     
+     @param nativeBannerAd An FBNativeBannerAd object sending the message.
+     */
+    func nativeBannerAdDidLoad(_ nativeBannerAd: FBNativeBannerAd) {
+        print("NativeBannerAdView > nativeBannerAdDidLoad")
+        self.nativeBannerAd = nativeBannerAd
+        regTemplate()
+        
+        let placement_id: String = nativeBannerAd.placementID
+        let invalidated: Bool = nativeBannerAd.isAdValid
+        let arg: [String: Any] = [
+            FANConstant.PLACEMENT_ID_ARG: placement_id,
+            FANConstant.INVALIDATED_ARG: invalidated,
+        ]
+        self.channel.invokeMethod(FANConstant.LOADED_METHOD, arguments: arg)
+    }
+    
+    /**
+     Sent when an FBNativeBannerAd has succesfully downloaded all media
+     */
+    func nativeBannerAdDidDownloadMedia(_ nativeBannerAd: FBNativeBannerAd) {
+        print("NativeBannerAdView > nativeBannerAdDidDownloadMedia")
+    }
+    
+    /**
+     Sent immediately before the impression of an FBNativeBannerAd object will be logged.
+     
+     @param nativeBannerAd An FBNativeBannerAd object sending the message.
+     */
+    func nativeBannerAdWillLogImpression(_ nativeBannerAd: FBNativeBannerAd) {
+        print("NativeBannerAdView > nativeBannerAdWillLogImpression")
+        let placement_id: String = nativeBannerAd.placementID
+        let invalidated: Bool = nativeBannerAd.isAdValid
+        let arg: [String: Any] = [
+            FANConstant.PLACEMENT_ID_ARG: placement_id,
+            FANConstant.INVALIDATED_ARG: invalidated,
+        ]
+        self.channel.invokeMethod(FANConstant.LOGGING_IMPRESSION_METHOD, arguments: arg)
+    }
+    
+    /**
+     Sent when an FBNativeBannerAd is failed to load.
+     
+     @param nativeBannerAd An FBNativeBannerAd object sending the message.
+     @param error An error object containing details of the error.
+     */
+    func nativeBannerAd(_ nativeBannerAd: FBNativeBannerAd, didFailWithError error: Error) {
+        print("NativeBannerAdView > nativeBannerAd")
+        let placement_id: String = nativeBannerAd.placementID
+        let invalidated: Bool = nativeBannerAd.isAdValid
+//        let errorStr: String = error as! String
+        let arg: [String: Any] = [
+            FANConstant.PLACEMENT_ID_ARG: placement_id,
+            FANConstant.INVALIDATED_ARG: invalidated,
+        ]
+        self.channel.invokeMethod(FANConstant.ERROR_METHOD, arguments: arg)
+    }
+    
+    /**
+     Sent after an ad has been clicked by the person.
+     
+     @param nativeBannerAd An FBNativeBannerAd object sending the message.
+     */
+    func nativeBannerAdDidClick(_ nativeBannerAd: FBNativeBannerAd) {
+        print("NativeBannerAdView > nativeBannerAdDidClick")
+        let placement_id: String = nativeBannerAd.placementID
+        let invalidated: Bool = nativeBannerAd.isAdValid
+        let arg: [String: Any] = [
+            FANConstant.PLACEMENT_ID_ARG: placement_id,
+            FANConstant.INVALIDATED_ARG: invalidated,
+        ]
+        self.channel.invokeMethod(FANConstant.CLICKED_METHOD, arguments: arg)
+    }
+    
+    /**
+     When an ad is clicked, the modal view will be presented. And when the user finishes the
+     interaction with the modal view and dismiss it, this message will be sent, returning control
+     to the application.
+     
+     @param nativeBannerAd An FBNativeBannerAd object sending the message.
+     */
+    func nativeBannerAdDidFinishHandlingClick(_ nativeBannerAd: FBNativeBannerAd) {
+        print("NativeBannerAdView > nativeBannerAdDidFinishHandlingClick")
     }
 }
 
-// MARK: - Render Native Banner
-private extension FacebookAudienceNetworkNativeBannerAdView {
-
-    func registerTemplateView() {
-        print("NativeBannerAd > registerTemplateView")
-
-        guard let ad = nativeBannerAd else { return }
-
-        let width = params["width"] as? CGFloat ?? UIScreen.main.bounds.width
-        let height = params["height"] as? CGFloat ?? 100.0
-        let viewType = resolveViewType(height)
-
-        let bannerView = FBNativeBannerAdView(nativeBannerAd: ad, with: viewType)
-        bannerView.frame = CGRect(x: 0, y: 0, width: width, height: height)
-
-        mainView.addSubview(bannerView)
-        mainView.layoutIfNeeded()
-    }
-
-    func resolveViewType(_ height: CGFloat) -> FBNativeBannerAdViewType {
-        switch height {
-        case 50:
-            return .genericHeight50
-        case 100:
-            return .genericHeight100
-        case 120:
-            return .genericHeight120
-        default:
-            return .genericHeight100
-        }
-    }
-}
-
-// MARK: - Delegate Handlers
-extension FacebookAudienceNetworkNativeBannerAdView {
-
-    nonisolated func nativeBannerAdDidLoad(_ nativeBannerAd: FBNativeBannerAd) {
-        Task { @MainActor in
-            print("NativeBannerAd > Loaded")
-
-            self.nativeBannerAd = nativeBannerAd
-            self.initNativeAdViewAttributes()
-            self.registerTemplateView()
-
-            channel.invokeMethod(FANConstant.LOADED_METHOD, arguments: [
-                FANConstant.PLACEMENT_ID_ARG: nativeBannerAd.placementID,
-                FANConstant.INVALIDATED_ARG: nativeBannerAd.isAdValid
-            ])
-        }
-    }
-
-    nonisolated func nativeBannerAdDidDownloadMedia(_ nativeBannerAd: FBNativeBannerAd) {
-        Task { @MainActor in
-            print("NativeBannerAd > DidDownloadMedia")
-        }
-    }
-
-    nonisolated func nativeBannerAdWillLogImpression(_ nativeBannerAd: FBNativeBannerAd) {
-        Task { @MainActor in
-            print("NativeBannerAd > WillLogImpression")
-
-            channel.invokeMethod(FANConstant.LOGGING_IMPRESSION_METHOD, arguments: [
-                FANConstant.PLACEMENT_ID_ARG: nativeBannerAd.placementID,
-                FANConstant.INVALIDATED_ARG: nativeBannerAd.isAdValid
-            ])
-        }
-    }
-
-    nonisolated func nativeBannerAd(_ nativeBannerAd: FBNativeBannerAd, didFailWithError error: Error) {
-        Task { @MainActor in
-            print("NativeBannerAd > Failed: \(error.localizedDescription)")
-
-            let details = FacebookAdErrorDetails(fromSDKError: error)
-
-            channel.invokeMethod(FANConstant.ERROR_METHOD, arguments: [
-                FANConstant.PLACEMENT_ID_ARG: nativeBannerAd.placementID,
-                FANConstant.INVALIDATED_ARG: nativeBannerAd.isAdValid,
-                FANConstant.ERROR_CODE_ARG: details?.code as Any,
-                FANConstant.ERROR_MESSAGE_ARG: details?.message as Any
-            ])
-        }
-    }
-
-    nonisolated func nativeBannerAdDidClick(_ nativeBannerAd: FBNativeBannerAd) {
-        Task { @MainActor in
-            print("NativeBannerAd > Clicked")
-
-            channel.invokeMethod(FANConstant.CLICKED_METHOD, arguments: [
-                FANConstant.PLACEMENT_ID_ARG: nativeBannerAd.placementID,
-                FANConstant.INVALIDATED_ARG: nativeBannerAd.isAdValid
-            ])
-        }
-    }
-
-    nonisolated func nativeBannerAdDidFinishHandlingClick(_ nativeBannerAd: FBNativeBannerAd) {
-        Task { @MainActor in
-            print("NativeBannerAd > FinishedHandlingClick")
-        }
-    }
-}
