@@ -2,6 +2,7 @@ import Foundation
 import Flutter
 import FBAudienceNetwork
 
+@MainActor
 class FacebookAudienceNetworkInterstitialAdPlugin: NSObject, FBInterstitialAdDelegate {
     let channel: FlutterMethodChannel
     private var adsById: [Int: FBInterstitialAd] = [:]
@@ -26,9 +27,7 @@ class FacebookAudienceNetworkInterstitialAdPlugin: NSObject, FBInterstitialAdDel
                 print("FacebookAudienceNetworkInterstitialAdPlugin > destroyInterstitialAd")
                 result(self.destroyAd(call))
             default:
-                DispatchQueue.main.async {
-                    result(FlutterMethodNotImplemented)
-                }
+                result(FlutterMethodNotImplemented)
             }
         }
         

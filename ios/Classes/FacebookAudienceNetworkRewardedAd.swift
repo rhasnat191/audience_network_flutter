@@ -9,6 +9,7 @@ import Foundation
 import Flutter
 import FBAudienceNetwork
 
+@MainActor
 class FacebookAudienceNetworkRewardedAdPlugin: NSObject, FBRewardedVideoAdDelegate {
     let channel: FlutterMethodChannel
     private var adsById: [Int: FBRewardedVideoAd] = [:]
@@ -33,9 +34,7 @@ class FacebookAudienceNetworkRewardedAdPlugin: NSObject, FBRewardedVideoAdDelega
                 print("FacebookAudienceNetworkRewardedAdPlugin> destroyRewardedAd")
                 result(self.destroyAd(call))
             default:
-                DispatchQueue.main.async {
-                    result(FlutterMethodNotImplemented)
-                }
+                result(FlutterMethodNotImplemented)
             }
         }
         
