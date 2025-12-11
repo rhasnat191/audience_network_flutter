@@ -681,8 +681,12 @@ final class FacebookAudienceNetworkNativeAdView: NSObject,
     private let viewId: Int64
     private let registrar: FlutterPluginRegistrar
     private let params: [String: Any]
-    private let channel: FlutterMethodChannel
-
+    private lazy var channel: FlutterMethodChannel = {
+        FlutterMethodChannel(
+                name: "\(FANConstant.NATIVE_AD_CHANNEL)_\(viewId)",
+                binaryMessenger: registrar.messenger()
+        )
+    }()
     private lazy var mainView: UIView = {
         UIView()
     }()
