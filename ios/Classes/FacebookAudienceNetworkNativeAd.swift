@@ -683,7 +683,9 @@ final class FacebookAudienceNetworkNativeAdView: NSObject,
     private let params: [String: Any]
     private let channel: FlutterMethodChannel
 
-    private var mainView = UIView()
+    private lazy var mainView: UIView = {
+        UIView()
+    }()
     private var nativeAd: FBNativeAd?
 
     // Layout
