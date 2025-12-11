@@ -22,7 +22,6 @@ final class FANPluginFactory: NSObject {
     }
 }
 
-// MARK: - Method Handler
 @MainActor
 private extension FANPluginFactory {
 

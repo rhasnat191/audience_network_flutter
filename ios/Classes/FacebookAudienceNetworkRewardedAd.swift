@@ -9,6 +9,7 @@ final class FacebookAudienceNetworkRewardedAdPlugin: NSObject, FBRewardedVideoAd
     private var adsById: [Int: FBRewardedVideoAd] = [:]
     private var idsByAd: [FBRewardedVideoAd: Int] = [:]
 
+    @MainActor
     init(_channel: FlutterMethodChannel) {
         print("RewardedAdPlugin > init")
 
