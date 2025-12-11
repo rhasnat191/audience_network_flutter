@@ -42,6 +42,7 @@ final class FacebookAudienceNetworkNativeBannerAdView: NSObject, FlutterPlatform
     private let registrar: FlutterPluginRegistrar
     private let params: [String: Any]
     private let channel: FlutterMethodChannel
+    @MainActor
     private lazy var mainView: UIView = {
         UIView()
     }()
